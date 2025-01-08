@@ -1,0 +1,542 @@
+package battleship;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+public class Main {
+    public static void main(String[] args) {
+        try(Scanner input=new Scanner(System.in)) {
+           PvPBattleship battle1=new PvPBattleship(input);
+           battle1.playerShipInput(battle1.player1,"Player 1");
+           battle1.playerShipInput(battle1.player2,"Player 2");
+           battle1.serialPlayerMove();
+            }
+        }
+    }
+class PvPBattleship{
+    Scanner input;
+    Battleship player1=new Battleship();
+    Battleship player2=new Battleship();
+   PvPBattleship(Scanner input){
+       this.input=input;
+   }
+    void playerShipInput(Battleship player,String playerName){
+        System.out.println(playerName+", place your ships on the game field\n");
+        player.printBoard(player.board);
+        player.serialInput(input);
+        System.out.println("Press Enter and pass the move to another player");
+        input.nextLine();
+    }
+    void serialPlayerMove(){
+           while(true){
+               playerMove(player1,player2,"player1");
+               playerMove(player2,player1,"player2");
+               if(player1.shipRemaining==0){
+                   System.out.println("Player1 has won the game");
+                   break;
+               }
+               if(player2.shipRemaining==0){
+                   System.out.println("Player2 has won the game");
+                   break;
+               }
+           }
+    }
+    void playerMove(Battleship player1,Battleship player2,String playerName){
+        player1.printBoard(player1.emptyBoard);
+        System.out.println("---------------------");
+        player1.printBoard(player1.board);
+       System.out.println(playerName+", it's your turn:");
+       player2.serialInputShot(input);
+        System.out.println("Press Enter and pass the move to another player");
+        input.nextLine();
+    }
+}
+class Battleship extends LinkedList{
+    char[][] board;
+    char[][] occupiedBoard;
+    char[][] fogOfWarBoard;
+    char[][] emptyBoard;
+    Ship[] shipArr=new Ship[5];
+    int shipRemaining=0;
+    Battleship(){
+        fogOfWarBoard=new char[10][10];
+        board = new char[10][10];
+        occupiedBoard = new char[10][10];
+        emptyBoard=new char[10][10];
+        createNewBoard();
+    }
+    void shipStatusCalc(String str){
+        boolean flag=false;
+        for(int i=0;i<=4;i++){
+            flag=shipArr[i].matchCoordinates(str);
+            if(flag){
+                break;
+            }
+        }
+        if(!flag){
+            System.out.println("You hit a ship!");
+        }
+
+    }
+    class Ship{
+        int length;
+        Boolean[] shipStatusArr;
+        String[] shipCoordinates;
+        boolean shipSank=false;
+        Ship(){
+            this.length=calcLenOfShip();
+            shipStatusArr =new Boolean[length];
+            Arrays.fill(shipStatusArr,false);
+            shipCoordinates=new String[length];
+            placeCoordinates();
+        }
+        void placeCoordinates(){
+            int[] maxInt=maxCalcNum();
+            char[] maxChar=maxCalcChar();
+            StringBuilder b1 =new StringBuilder();
+            int j=0;
+            if(maxChar[0]==maxChar[1]){
+                for(int i=maxInt[0];i<=maxInt[1];i++){
+                    b1.append(maxChar[0]);
+                    b1.append(i);
+                    shipCoordinates[j]= b1.toString();
+                    j++;
+                    b1.setLength(0);
+                }
+            }
+            else if(maxInt[0]==maxInt[1]){
+                for(int i=0;i<=maxChar[1]-maxChar[0];i++){
+                    b1.append((char)(maxChar[0]+i));
+                    b1.append(maxInt[0]);
+                    shipCoordinates[j]= b1.toString();
+                    j++;
+                    b1.setLength(0);
+                }
+            }
+            System.out.println();
+        }
+        boolean matchCoordinates(String str) {
+            if (!shipSank) {
+                for (int i = 0; i < length; i++) {
+                    if (shipCoordinates[i].equals(str)) {
+                        shipStatusArr[i] = true;
+                        break;
+                    }
+                }
+                boolean flag = checkAllShipStatus();
+                if (shipRemaining == 0) {
+                    System.out.println("You sank the last ship. You won. Congratulations!");
+                } else if (flag) {
+                    System.out.println("You sank a ship! Specify a new target:");
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            return false;
+        }
+        boolean checkAllShipStatus(){
+            boolean isAllTrue= Arrays.stream(shipStatusArr).allMatch(var-> var);
+            if(isAllTrue) {
+                shipRemaining--;
+                shipSank=true;
+                return true;
+            } else {
+                return false;
+            }
+
+        }
+    }
+    void createNewBoard(){
+        for(int i=0;i<=9;i++) {
+            for (int j = 0; j <=9; j++) {
+                board[i][j] = '~';
+                occupiedBoard[i][j]='~';
+                fogOfWarBoard[i][j]='~';
+                emptyBoard[i][j]='~';
+            }
+        }
+    }
+    void displayGameStart(){
+        System.out.println("The game starts!\n");
+        printBoard(fogOfWarBoard);
+    }
+    void serialInputShot(Scanner input){
+        boolean flag=false;
+        while(!flag){
+            flag=inputShot(input);
+        }
+
+    }
+    boolean inputShot(Scanner input){
+        {
+            String regex = "^[A-J](?:[1-9]|10)$";
+            Pattern pattern =Pattern.compile(regex);
+            String s1 = input.nextLine();
+            Matcher matcher = pattern.matcher(s1);
+            if (matcher.find()) {
+                InputShotCoordinate obj1InputShotCoordinate=new InputShotCoordinate(s1);
+                checkHit(obj1InputShotCoordinate,s1);
+                System.out.println();
+                return true;
+            } else {
+                System.out.println("Error! You entered the wrong coordinates! Try again:");
+                return false;
+            }
+        }
+    }
+    void checkHit(InputShotCoordinate input,String str){
+        if(board[input.character-'A'][input.number-1]=='~'){
+            fogOfWarBoard[input.character-'A'][input.number-1]='M';
+            System.out.println("You missed!");
+            board[input.character-'A'][input.number-1]='M';
+        }
+        else{
+            fogOfWarBoard[input.character-'A'][input.number-1]='X';
+            shipStatusCalc(str);
+            board[input.character-'A'][input.number-1]='X';
+        }
+    }
+    void serialInput(Scanner input){
+        String[] WarshipName={"Aircraft Carrier ","Battleship","Submarine", "Cruiser","Destroyer"};
+        int[] WarshipLength={5,4,3,3,2};
+        for(int i=0;i<=4;i++) {
+            boolean flagInput;
+            boolean flagLength;
+            System.out.println("Enter the coordinates of the " + WarshipName[i] + "(" + WarshipLength[i] + " cells):");
+            while(true) {
+                flagInput = inputCoordinates(input);
+                if(flagInput) {
+                    flagLength=(WarshipLength[i]==calcLenOfShip());
+                    if (flagLength) {
+                        placeCoordinates();
+                        printBoard(board);
+                        shipRemaining++;
+                        shipArr[i]=new Ship();
+                        break;
+                    } else {
+                        System.out.println("Warship length="+calcLenOfShip());
+                        System.out.println("RequiredLength="+WarshipLength[i]);
+                        System.out.println("Error! Wrong length of the " + WarshipName[i] + "! Try again:");
+                    }
+                }
+            }
+        }
+    }
+    boolean inputCoordinates(Scanner input) {
+        String regex = "^[A-J](?:[1-9]|10) [A-J](?:[1-9]|10)$";
+        /*() is for grouping the boolean condition,^ and &
+          ensure that the pattern is only matched once as it requires
+          the pattern to be both at the start and the end of line which can only occur once
+          ?: ensure that the bracket is non-capturing group
+          capturing group can be used to check if the substring in the captured group is reused
+          "([1-9]{2})[A-Z]\1" 12A12 IS VALID,12A34 IS NOT VALID,{2}MEANS [1-9] OCCURS EXACTLY TWICE
+        */
+        Pattern pattern =Pattern.compile(regex);
+        String s1 = input.nextLine();
+        Matcher matcher = pattern.matcher(s1);
+        if (matcher.find()) {
+            Store store = new Store(s1);
+            pushStringCoordinates(store.objIndividualCharNum);//pushing IndividualCharNum
+            if (spaceAvailable()) {
+                return true;
+            }
+            else{
+                System.out.println("Error! You placed it too close to another one. Try again:");
+                deleteNode();
+                return false;
+            }
+        } else {
+            System.out.println("Error!");
+            return false;
+        }
+    }
+    void printLength(){
+        System.out.println("Length: "+calcLenOfShip());
+    }
+    void printParts(){
+        int[] maxInt=maxCalcNum();
+        char[] maxChar=maxCalcChar();
+        if(maxChar[0]==maxChar[1]){
+            for(int i=maxInt[0];i<=maxInt[1];i++){
+                System.out.print(maxChar[0]+""+i+" ");
+            }
+        }
+        else if(maxInt[0]==maxInt[1]){
+            for(int i=0;i<=maxChar[1]-maxChar[0];i++){
+                System.out.printf("%c%d ",maxChar[0]+i,maxInt[0]);
+            }
+        }
+        System.out.println();
+    }
+    int[] maxCalcNum(){
+        IndividualCharNum[] temp=peekNode();
+        int[] arr=new int[2];
+        int a=temp[0].number;
+        int b=temp[1].number;
+        if(a>=b){
+            arr[0]=b;
+            arr[1]=a;
+        }
+        else{
+            arr[0]=a;
+            arr[1]=b;
+        }
+        return arr;
+    }
+    char[] maxCalcChar(){
+        IndividualCharNum[] temp=peekNode();
+        char[] arr=new char[2];
+        char a=temp[0].character;
+        char b=temp[1].character;
+        if(a>=b){
+            arr[0]=b;
+            arr[1]=a;
+        }
+        else{
+            arr[0]=a;
+            arr[1]=b;
+        }
+        return arr;
+    }
+    int calcLenOfShip(){
+        int length=0;
+        IndividualCharNum[] temp=peekNode();
+        if(temp[0].character==temp[1].character){
+            length=temp[1].number-temp[0].number;
+        }
+        else if(temp[0].number==temp[1].number){
+            length=temp[1].character-temp[0].character;
+        }
+        if(length>=0){
+            return length+1;
+        }
+        else{
+            return length*(-1)+1;
+        }
+    }
+    void printBoard(char[][] localBoard){
+            for(int i=0;i<=10;i++){
+                for (int j=0;j<=10;j++){
+                    if(i==0){
+                        if(j==0){
+                            System.out.print("  ");
+                        }
+                        else{
+                            System.out.print(j+" ");
+                        }
+                    }
+                    else{
+                        if(j==0){
+                            System.out.print((char)(64+i)+" ");
+                        }
+                        else{
+                            System.out.print(localBoard[i-1][j-1]+" ");
+                        }
+                    }
+                }
+                System.out.println();
+            }
+            System.out.println();
+    }
+    void placeCoordinates() {
+            int[] maxInt = maxCalcNum();
+            char[] maxChar = maxCalcChar();
+            if (maxInt[0] == maxInt[1]) {
+                for (int i = maxChar[0] - 'A'; i <= maxChar[1] - 'A'; i++) {
+                    board[i][maxInt[0] - 1] = 'O';
+                }
+            } else {
+                for (int j = maxInt[0] - 1; j <= maxInt[1] - 1; j++) {
+                    board[maxChar[0] - 'A'][j] = 'O';
+                }
+            }
+            setOccupiedBoard();
+    }
+    void setOccupiedBoard(){// PLACING COORDINATES WITH SPACING IN THE OCCUPIED BOARD
+        int[] maxInt=maxCalcNum();
+        char[] maxChar=maxCalcChar();
+        if (maxInt[0] == maxInt[1]) {
+            for(int i=maxChar[0]-'A'-1;i<=maxChar[1]-'A'+1;i++) {
+                if (i >= 0 && i <= 9) {
+                    if (maxInt[0] - 2 >= 0) {
+                        occupiedBoard[i][maxInt[0] - 2] = 'O';
+                    }
+                    occupiedBoard[i][maxInt[0] - 1] = 'O';
+                    if (maxInt[0] <= 9) {
+                        occupiedBoard[i][maxInt[0]] = 'O';
+                    }
+                }
+            }
+        }
+        else {
+            for(int j=maxInt[0]-2;j<=maxInt[1];j++) {
+                if (j >= 0 && j<=9) {
+                    if (maxChar[0] - 'A' - 1 >= 0) {
+                        occupiedBoard[maxChar[0] - 'A' - 1][j] = 'O';
+                    }
+                    occupiedBoard[maxChar[0] - 'A'][j] = 'O';
+                    if (maxChar[0] - 'A' + 1 <= 9) {
+                        occupiedBoard[maxChar[0] - 'A' + 1][j] = 'O';
+                    }
+                }
+            }
+        }
+    }
+    boolean spaceAvailable(){
+        int[] maxInt=maxCalcNum();
+        char[] maxChar=maxCalcChar();
+        if (maxInt[0] == maxInt[1]) {
+            for(int i=maxChar[0]-'A';i<=maxChar[1]-'A';i++){
+                if(occupiedBoard[i][maxInt[0]-1]=='O'){
+                    return false;
+                }
+            }
+        }
+        else{
+            for(int j=maxInt[0]-1;j<=maxInt[1]-1;j++){
+                if(occupiedBoard[maxChar[0]-'A'][j]=='O'){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
+class Store {//split the string input from the ' ' and stores it in charArr
+    // and store those charArr in IndividualCharNum object
+    static class storeCharArr{
+        StringBuilder b1 =new StringBuilder();
+        StringBuilder b2=new StringBuilder();
+        char[] charArr;
+        char[] ele1;
+        char[] ele2;
+        storeCharArr(String str){
+            charArr=str.toCharArray();
+            this.splitChar();
+        }
+        void splitChar(){
+            boolean flag=false;
+            for(int i=0;i<charArr.length-1;i++){
+                if(charArr[i] != ' ' && !flag){
+                    b1.append(charArr[i]);
+                }
+                else{
+                    b2.append(charArr[i+1]);
+                    flag=true;
+                }
+            }
+            ele1=b1.toString().toCharArray();
+            ele2=b2.toString().toCharArray();
+        }
+    }
+    IndividualCharNum[] objIndividualCharNum=new IndividualCharNum[2];
+    storeCharArr objStoreCharArr;
+    Store(String str){
+        objStoreCharArr= new storeCharArr(str);
+        this.placeElement();
+    }
+    void placeElement(){
+        IndividualCharNum objEle1= new IndividualCharNum(objStoreCharArr.ele1);
+        IndividualCharNum objEle2= new IndividualCharNum(objStoreCharArr.ele2);
+        objIndividualCharNum[0]=objEle1;
+        objIndividualCharNum[1]=objEle2;
+    }
+}
+class IndividualCharNum{// creates an object which stores the alphabet and integer aspect of the coordinate
+    // two object of IndividualCharNum are created to store a complete coordinate
+    char character;
+    int number;
+    private final char[] arrIndividual;
+    private final int length;
+    IndividualCharNum(char[] arr){
+        this.arrIndividual =arr;
+
+        length=arrIndividual.length;
+        this.storeValue();
+    }
+    private void storeValue(){
+
+        if(length==2){
+            character= arrIndividual[0];
+            number= arrIndividual[1]-'0';
+        }
+        else{
+            character= arrIndividual[0];
+            number=((arrIndividual[1]-'0')*10)+arrIndividual[2]-'0';
+        }
+    }
+}
+class LinkedList{
+    Node head;
+    Node tail;
+    Node currentTemp;
+
+    int count=0;
+    static class Node{
+        Node next=null;
+        Node prev=null;
+        IndividualCharNum[] coordinateValue;
+    }
+    LinkedList(){
+        head= new Node();
+        tail= new Node();
+        currentTemp=head;
+        head.next=tail;
+        tail.prev=head;
+    }
+    void pushStringCoordinates(IndividualCharNum[] coordinateValue) {
+        Node node = new Node();
+        node.coordinateValue=coordinateValue;
+        currentTemp.next=node;
+        node.prev=currentTemp;
+        currentTemp=currentTemp.next;
+        tail.prev=node;
+        node.next=tail;
+    }
+    Node traverseNode(int count){
+        Node temp=head;
+        if(this.count>=count) {
+            for (int i = 1; i <= count; i++) {
+                temp = temp.next;
+            }
+        }
+        else{
+            System.out.println("The linked list is has nodes than "+count);
+        }
+        return temp;
+    }
+    void printNode(Node node) {
+        System.out.print(node.coordinateValue[0].character);
+        System.out.print(node.coordinateValue[0].number+" ");
+        System.out.print(node.coordinateValue[1].character);
+        System.out.print(node.coordinateValue[1].number);
+
+    }
+    IndividualCharNum[] peekNode(){
+        return currentTemp.coordinateValue;
+    }
+    void deleteNode(){
+        Node tempDelete=traverseNode(count-1);
+        tempDelete.next=null;
+    }
+}
+class InputShotCoordinate{
+    char character;
+    int number;
+    char[] arr;
+    InputShotCoordinate(String str){
+         arr=str.toCharArray();
+         placeShotCharNum();
+    }
+    void placeShotCharNum(){
+        if(arr.length==2){
+            character=arr[0];
+            number=arr[1]-'0';
+        }
+        else{
+            character=arr[0];
+            number=10;
+        }
+    }
+}
